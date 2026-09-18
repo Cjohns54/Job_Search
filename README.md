@@ -18,6 +18,14 @@ Then: title filter → skip anything seen before → fetch descriptions → loca
 
 Clearance / US-citizen-only postings are flagged and bumped down one level, not removed.
 
+## Daily use
+
+```bash
+cd ~/Desktop/Job_Search/job-radar && python3 -m jobradar app
+```
+
+Pulls the latest jobs, opens a tracker in your browser. Every job has **Applied** and **Ineligible** toggles; filter by To do / Applied / Not applied / Ineligible, priority, region, date found, or search. Toggles save instantly to `data/status.json`. Press Ctrl+C in Terminal when done and your statuses get committed and pushed as a backup.
+
 ## Outputs
 
 - `output/latest.html`: the morning page (new today, grouped by priority, with apply links)
