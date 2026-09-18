@@ -74,7 +74,7 @@ roles:
     - account executive
     - recruiter
   max_years_required: 3            # drop if the description's lowest "X+ years experience" is above this
-  max_age_days: 21                 # ignore postings older than this (when a date is known)
+  max_age_days: 14                 # ignore postings older than this (when a date is known)
 
 regions:
   gta_kw:
