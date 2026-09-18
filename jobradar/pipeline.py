@@ -124,5 +124,5 @@ def run(only: set[str] | None = None, use_llm: bool = True, db_path: Path | None
 
     new = write_all(store, out_dir or ROOT / "output")
     log.info("Funnel: %s", dict(funnel))
-    log.info("New today (P1-P4): %d  |  LLM calls: %d", len(new), scorer.used)
+    log.info("New today (P1-P4): %d  |  LLM calls: %d  |  tokens in/out: %d/%d", len(new), scorer.used, scorer.tokens_in, scorer.tokens_out)
     return new

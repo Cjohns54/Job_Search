@@ -128,7 +128,7 @@ custom_company_search:
   results_per_query: 25
 
 scoring:
-  llm_model: gpt-4.1-mini          # any OpenAI-compatible chat model; override with LLM_MODEL env
+  llm_model: gpt-5-mini            # ~$0.25 in / $2 out per 1M tokens; override with LLM_MODEL
   max_llm_jobs_per_run: 250
   description_chars: 6000
 

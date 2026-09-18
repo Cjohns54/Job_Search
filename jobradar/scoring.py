@@ -62,6 +62,8 @@ class Scorer:
         self.model = os.environ.get("LLM_MODEL") or cfg["scoring"]["llm_model"]
         self.budget = cfg["scoring"]["max_llm_jobs_per_run"]
         self.used = 0
+        self.tokens_in = 0
+        self.tokens_out = 0
         if use_llm and not self.key:
             log.info("LLM_API_KEY not set: using keyword scoring")
         if self.key and not resume:
@@ -84,12 +86,21 @@ class Scorer:
                   .replace("__COMPANY__", job.company).replace("__TITLE__", job.title)
                   .replace("__LOCATION__", job.location)
                   .replace("__DESC__", (job.description or "(no description available)")[:n]))
-        r = SESSION.post(f"{self.base.rstrip('/')}/chat/completions", timeout=60,
-                         headers={"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"},
-                         json={"model": self.model, "temperature": 0,
-                               "response_format": {"type": "json_object"},
-                               "messages": [{"role": "user", "content": prompt}]})
+        body = {"model": self.model, "response_format": {"type": "json_object"},
+                "messages": [{"role": "user", "content": prompt}]}
+        extra = {"reasoning_effort": "minimal"} if self.model.startswith("gpt-5") else {"temperature": 0}
+        headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
+        url = f"{self.base.rstrip('/')}/chat/completions"
+        r = SESSION.post(url, timeout=90, headers=headers, json={**body, **extra})
+        if r.status_code == 400:                     # model doesn't accept that param: retry plain
+            r = SESSION.post(url, timeout=90, headers=headers, json=body)
+        if r.status_code in (401, 403, 404):
+            self.key = None                          # bad key / unknown model: stop trying this run
+            raise RuntimeError(f"LLM disabled for this run: HTTP {r.status_code} {r.text[:200]}")
         r.raise_for_status()
+        usage = r.json().get("usage") or {}
+        self.tokens_in += usage.get("prompt_tokens", 0)
+        self.tokens_out += usage.get("completion_tokens", 0)
         out = json.loads(r.json()["choices"][0]["message"]["content"])
         if out.get("years_required") is not None and job.years_required is None:
             try:
