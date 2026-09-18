@@ -14,7 +14,8 @@ from .util import today
 log = logging.getLogger(__name__)
 
 COLUMNS = ["first_seen", "priority", "fit_score", "company", "title", "location", "region", "flags",
-           "why_fit", "concerns", "years_required", "posted_at", "source", "url"]
+           "why_fit", "concerns", "years_required", "posted_at", "source", "url",
+           "contact_name", "contact_title", "contact_url"]
 LABELS = {1: "P1 · Near you, strong fit", 2: "P2 · Top company, strong fit",
           3: "P3 · Near you, partial fit", 4: "P4 · Everything else that passed"}
 REGION_NAMES = {"gta_kw": "Toronto/Waterloo", "dc_nova": "DC/NoVA", "remote_ca": "Remote Canada",
@@ -36,7 +37,9 @@ def _row_html(r) -> str:
     return (f'<tr><td class="fit">{e(r["fit_score"])}</td>'
             f'<td><a href="{e(r["url"])}" target="_blank" rel="noopener"><b>{e(r["title"])}</b></a>'
             f'<div class="sub">{e(r["company"])} · {e(r["location"])} {flags}</div>'
-            f'<div class="why">{e(r["why_fit"])}{" · ⚠ " + e(r["concerns"]) if r["concerns"] else ""}</div></td>'
+            f'<div class="why">{e(r["why_fit"])}{" · ⚠ " + e(r["concerns"]) if r["concerns"] else ""}</div>'
+            + (f'<div class="why">👤 <a href="{e(r["contact_url"])}" target="_blank">{e(r["contact_name"])}</a> · {e(r["contact_title"])}</div>' if r["contact_name"] else "")
+            + '</td>'
             f'<td class="meta">{e(REGION_NAMES.get(r["region"], r["region"]))}<br>{e(r["source"])}<br>{e(r["posted_at"])}</td></tr>')
 
 

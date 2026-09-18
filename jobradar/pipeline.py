@@ -11,7 +11,7 @@ from .filters import CompanyMatcher, RegionClassifier, TitleFilter, detect_flags
 from .models import Job
 from .report import write_all
 from .scoring import Scorer, assign_priority
-from .sources import ats, github_lists, jobspy_source
+from .sources import ats, github_lists, jobspy_source, linkedin_contacts
 from .store import Store
 from .util import job_key, today
 
@@ -121,8 +121,31 @@ def run(only: set[str] | None = None, use_llm: bool = True, db_path: Path | None
         funnel["scored"] += 1
         funnel[f"P{j.priority}"] += 1
     store.commit()
+    if cfg.get("contacts", {}).get("enabled", True):
+        find_contacts(store, cfg)
 
     new = write_all(store, out_dir or ROOT / "output")
     log.info("Funnel: %s", dict(funnel))
     log.info("New today (P1-P4): %d  |  LLM calls: %d  |  tokens in/out: %d/%d", len(new), scorer.used, scorer.tokens_in, scorer.tokens_out)
     return new
+
+
+def find_contacts(store: Store, cfg: dict) -> None:
+    """Pull 'Meet the hiring team' for LinkedIn jobs (new ones first, then backfill older ones)."""
+    import time
+    c = cfg.get("contacts", {})
+    todo = store.needs_contact(c.get("max_per_run", 150))
+    found = checked = 0
+    for row in todo:
+        try:
+            people = linkedin_contacts.fetch(row["url"])
+        except Exception as e:
+            log.warning("Stopping hiring-team lookups early: %s", e)
+            break
+        if people is not None:
+            store.set_contacts(row["key"], people)
+            checked += 1
+            found += bool(people)
+        time.sleep(c.get("sleep_seconds", 1.5))
+    store.commit()
+    log.info("Hiring team: checked %d LinkedIn jobs, found a person on %d", checked, found)

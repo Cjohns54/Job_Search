@@ -100,3 +100,35 @@ def test_workday_parse():
 def test_heuristic():
     s, why, _ = heuristic(Job("A", "Software Engineer I", "Toronto", "u", "t", description="TypeScript React AWS Python"))
     assert s >= 7 and "typescript" in why
+
+
+GUEST_HTML = """<section class="core-section-container"><div class="message-the-recruiter">
+<h3 class="core-section-container__title">Meet the hiring team</h3>
+<div class="base-card relative flex base-main-card flex-wrap">
+ <a class="base-card__full-link" href="https://ca.linkedin.com/in/champa-b-12345?trk=public_jobs_job-poster"><span class="sr-only">Champa B</span></a>
+ <div class="base-main-card__info"><h3 class="base-main-card__title font-sans">
+   Champa B
+ </h3><h4 class="base-main-card__subtitle">Senior Sourcing Partner Tech at Hays</h4></div>
+</div></div></section>"""
+
+
+def test_linkedin_contacts():
+    from jobradar.sources import linkedin_contacts as lc
+    assert lc.job_id("https://www.linkedin.com/jobs/view/4468346526") == "4468346526"
+    assert lc.job_id("https://ca.linkedin.com/jobs/view/full-stack-dev-at-hays-4468346526?trk=x") == "4468346526"
+    assert lc.job_id("https://boards.greenhouse.io/x/1") is None
+    p = lc.parse(GUEST_HTML)
+    assert p == [{"name": "Champa B", "title": "Senior Sourcing Partner Tech at Hays",
+                  "url": "https://ca.linkedin.com/in/champa-b-12345"}]
+    assert lc.parse("<html>no team</html>") == []
+
+
+def test_store_contacts(tmp_path):
+    from jobradar.store import Store
+    s = Store(tmp_path / "j.db")
+    j = Job("Hays", "Full Stack Developer", "Mississauga, ON", "https://www.linkedin.com/jobs/view/4468346526",
+            "jobspy:linkedin", key="k1", priority=1, fit_score=8)
+    s.add(j)
+    assert [r["key"] for r in s.needs_contact(10)] == ["k1"]
+    s.set_contacts("k1", [{"name": "Champa B", "title": "Sourcing", "url": "u"}])
+    assert s.needs_contact(10) == [] and s.rows()[0]["contact_name"] == "Champa B"

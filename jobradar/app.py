@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .config import ROOT
+from .sources.linkedin_contacts import people_search_url
 
 DB = ROOT / "data" / "jobs.db"
 STATUS = ROOT / "data" / "status.json"
@@ -38,15 +39,20 @@ def jobs() -> list[dict]:
         return []
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
-    rows = [dict(r) for r in db.execute(
-        "SELECT key, url, first_seen, posted_at, company, title, location, region, watch_company, source, "
-        "fit_score, why_fit, concerns, flags, priority FROM jobs WHERE priority <= 4")]
+    rows = [dict(r) for r in db.execute("SELECT * FROM jobs WHERE priority <= 4")]   # SELECT * so older jobs.db files still work
     db.close()
     st = load_status()
     for r in rows:
         s = st.get(r["key"], {})
         r["applied"] = bool(s.get("applied"))
         r["ineligible"] = bool(s.get("ineligible"))
+        try:
+            r["people"] = json.loads(r.get("contacts_json") or "[]")
+        except json.JSONDecodeError:
+            r["people"] = []
+        r["people_search"] = people_search_url(r["company"])
+        for k in ("contacts_json", "description"):
+            r.pop(k, None)
     return rows
 
 
@@ -146,6 +152,7 @@ a.t{color:var(--acc);text-decoration:none;font-weight:600}a.t:hover{text-decorat
 .sw i:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px #0003}
 .sw input:checked+i{background:var(--ok)}.sw.inel input:checked+i{background:var(--no)}.sw input:checked+i:after{left:16px}
 .sw input:checked~span{color:var(--fg);font-weight:600}
+.ppl{font-size:12.5px;margin-top:3px}.ppl a{color:var(--acc);text-decoration:none}.ppl a:hover{text-decoration:underline}.ppl .find{color:var(--mut)}
 .empty{padding:40px;text-align:center;color:var(--mut)}
 @media (max-width:760px){.row{grid-template-columns:36px 1fr;}.meta{display:none}.tg{grid-column:2;flex-direction:row;justify-content:flex-start;gap:18px}}
 </style></head><body>
@@ -159,6 +166,7 @@ a.t{color:var(--acc);text-decoration:none;font-weight:600}a.t:hover{text-decorat
  <select id="region"><option value="">All regions</option><option value="gta_kw">Toronto/Waterloo</option><option value="dc_nova">DC/NoVA</option><option value="remote_ca">Remote Canada</option><option value="canada_other">Other Canada</option><option value="us">US (other/remote)</option></select>
  <select id="age"><option value="">Found: any time</option><option value="0">Found today</option><option value="3">Last 3 days</option><option value="7">Last 7 days</option></select>
  <select id="sort"><option value="new">Newest, then priority</option><option value="fit">Best fit</option><option value="prio">Priority</option></select>
+ <label class="sw" style="margin-left:4px"><input type="checkbox" id="hasp"><i></i><span>Has recruiter</span></label>
  <input type="search" id="q" placeholder="Search title, company, location">
 </div></header>
 <main id="list"></main>
@@ -177,7 +185,8 @@ function view(){
   if(p&&String(j.priority)!==p)return false;
   if(rg&&(rg==="us"?!(j.region==="us_other"||j.region==="us_remote"):j.region!==rg))return false;
   if(age!==""&&daysAgo(j.first_seen)>+age)return false;
-  if(q&&!(j.title+" "+j.company+" "+j.location).toLowerCase().includes(q))return false;
+  if($("#hasp").checked&&!(j.people||[]).length)return false;
+  if(q&&!(j.title+" "+j.company+" "+j.location+" "+(j.people||[]).map(p=>p.name).join(" ")).toLowerCase().includes(q))return false;
   return true});
  const cmp={new:(a,b)=>(b.first_seen||"").localeCompare(a.first_seen||"")||a.priority-b.priority||(b.fit_score||0)-(a.fit_score||0),
   fit:(a,b)=>(b.fit_score||0)-(a.fit_score||0)||a.priority-b.priority,
@@ -189,7 +198,9 @@ function view(){
   <div class="fit">${j.fit_score??""}</div>
   <div><span class="p">P${j.priority}</span><a class="t" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
    <div class="sub">${esc(j.company)} · ${esc(j.location)}${(j.flags||"").split(",").filter(Boolean).map(f=>`<span class="flag">${esc(f)}</span>`).join("")}</div>
-   <div class="why">${esc(j.why_fit)}${j.concerns?" · ⚠ "+esc(j.concerns):""}</div></div>
+   <div class="why">${esc(j.why_fit)}${j.concerns?" · ⚠ "+esc(j.concerns):""}</div>
+   <div class="ppl">${(j.people||[]).map(p=>`👤 ${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name)}${p.title?" · "+esc(p.title):""}`).join("<br>")}
+    ${(j.people||[]).length?" · ":""}<a class="find" href="${esc(j.people_search)}" target="_blank" rel="noopener">Find recruiters at ${esc(j.company)} ↗</a></div></div>
   <div class="meta">${esc(R[j.region]||j.region)}<br>${esc(j.source)}<br>found ${esc(j.first_seen)}</div>
   <div class="tg">
    <label class="sw"><input type="checkbox" data-k="${j.key}" data-f="applied"${j.applied?" checked":""}><i></i><span>Applied</span></label>
@@ -204,6 +215,6 @@ $("#list").addEventListener("change",async e=>{
  setTimeout(view,250)});
 $("#status").addEventListener("click",e=>{if(!e.target.dataset.v)return;st=e.target.dataset.v;
  document.querySelectorAll("#status button").forEach(b=>b.classList.toggle("on",b===e.target));view()});
-["#prio","#region","#age","#sort"].forEach(s=>$(s).addEventListener("change",view));$("#q").addEventListener("input",view);
+["#prio","#region","#age","#sort","#hasp"].forEach(s=>$(s).addEventListener("change",view));$("#q").addEventListener("input",view);
 fetch("/api/jobs").then(r=>r.json()).then(d=>{JOBS=d;view()});
 </script></body></html>"""
