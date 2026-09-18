@@ -1,0 +1,55 @@
+company,group,match_names,gta_kw_office,dc_nova_office,ats,ats_slug,ats_confidence,notes
+Synopsys,past_employer,synopsys,Y,?,custom,https://careers.synopsys.com,med,3 terms on the Ansys web platform team; warmest lead. Ansys merged into Synopsys (2025)
+Ansys,past_employer,ansys|ansys inc,Y,?,custom,https://careers.ansys.com,low,May now redirect into Synopsys careers
+P&P Optica,past_employer,p&p optica|p p optica|pp optica,Y,N,custom,https://ppoptica.com/careers,low,ML intern; Waterloo
+Virtek Vision International,past_employer,virtek|virtek vision|virtek vision international,Y,N,custom,https://virtekvision.com/careers,low,Software intern; Waterloo
+Amazon,big_tech,amazon|amazon web services|aws|amazon.com|amazon development centre canada,Y,Y,amazon,https://www.amazon.jobs/en/search.json,med,SDE I pipeline; Toronto + HQ2 Arlington
+Google,big_tech,google|alphabet|google deepmind|deepmind,Y,Y,custom,https://www.google.com/about/careers/applications/jobs/results,high,Waterloo + Toronto; Reston
+Microsoft,big_tech,microsoft|github|linkedin,Y,Y,custom,https://jobs.careers.microsoft.com,high,Toronto + Vancouver; Reston
+Meta,big_tech,meta|facebook|meta platforms,Y,Y,custom,https://www.metacareers.com,high,Toronto office
+Apple,big_tech,apple,?,N,custom,https://jobs.apple.com,high,Mostly Cupertino
+NVIDIA,big_tech,nvidia,Y,?,workday,nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,high,Toronto AI/sim teams
+Salesforce,big_tech_peer,salesforce|slack|tableau,Y,?,workday,salesforce.wd12.myworkdayjobs.com/External_Career_Site,high,Toronto; Agentforce
+Adobe,big_tech_peer,adobe,Y,?,workday,adobe.wd5.myworkdayjobs.com/external_experienced,high,Toronto office
+Oracle,big_tech_peer,oracle,Y,Y,custom,https://careers.oracle.com,med,Toronto + Reston
+IBM,big_tech_peer,ibm,Y,Y,custom,https://www.ibm.com/careers,med,Markham lab
+Intel,big_tech_peer,intel|intel corporation,Y,?,workday,intel.wd1.myworkdayjobs.com/External,high,Toronto SW teams
+AMD,big_tech_peer,amd|advanced micro devices,Y,N,custom,https://careers.amd.com,med,Markham
+Qualcomm,big_tech_peer,qualcomm,Y,N,custom,https://careers.qualcomm.com,low,Markham
+Cisco,big_tech_peer,cisco|cisco systems,Y,Y,custom,https://jobs.cisco.com,med,Toronto; Herndon
+Cadence Design Systems,eda_cad_peer,cadence|cadence design systems,?,N,workday,cadence.wd1.myworkdayjobs.com/External_Careers,med,Synopsys competitor
+Siemens Digital Industries Software,eda_cad_peer,siemens|siemens digital industries software|siemens eda,?,?,custom,https://jobs.siemens.com,low,Ansys competitor
+Autodesk,eda_cad_peer,autodesk,Y,N,workday,autodesk.wd1.myworkdayjobs.com/Ext,med,Big Toronto office
+Dassault Systemes,eda_cad_peer,dassault systemes|dassault systèmes|3ds,?,N,custom,https://www.3ds.com/careers,low,Ansys competitor
+Shopify,top_tech,shopify,Y,N,custom,https://www.shopify.com/careers,med,Toronto/Waterloo/remote Canada
+Uber,top_tech,uber,Y,?,custom,https://www.uber.com/us/en/careers,med,Toronto hub
+Stripe,unicorn,stripe,Y,?,greenhouse,stripe,high,Toronto office
+Databricks,unicorn,databricks,?,?,greenhouse,databricks,high,New grad program
+Snowflake,top_tech,snowflake,Y,?,custom,https://careers.snowflake.com,low,Toronto office
+Intuit,top_tech,intuit,Y,N,custom,https://jobs.intuit.com,med,Toronto office
+Capital One,top_tech,capital one,Y,Y,workday,capitalone.wd12.myworkdayjobs.com/Capital_One,high,Toronto + McLean HQ
+ServiceNow,top_tech,servicenow,Y,?,smartrecruiters,ServiceNow,med,Toronto office
+Workday,top_tech,workday,Y,?,workday,workday.wd5.myworkdayjobs.com/Workday,med,Toronto office
+Atlassian,top_tech,atlassian,?,N,custom,https://www.atlassian.com/company/careers,low,Remote-friendly
+Cloudflare,top_tech,cloudflare,?,?,greenhouse,cloudflare,high,Austin/remote
+Datadog,top_tech,datadog,?,?,greenhouse,datadog,high,NYC/Boston
+OpenAI,ai_lab,openai,N,?,ashby,openai,high,AI eng / FDE
+Anthropic,ai_lab,anthropic,N,Y,greenhouse,anthropic,high,Applied AI / FDE; DC office
+Scale AI,ai_lab,scale ai|scaleai,N,Y,greenhouse,scaleai,high,DC public sector office
+Cohere,ai_lab,cohere,Y,N,ashby,cohere,high,Toronto HQ
+Palantir,top_tech,palantir|palantir technologies,?,Y,lever,palantir,high,FDE fit; DC presence
+Instacart,top_tech,instacart|maplebear,Y,N,greenhouse,instacart,high,Toronto hub
+Pinterest,top_tech,pinterest,Y,N,greenhouse,pinterest,high,Toronto office
+Airbnb,top_tech,airbnb,?,N,greenhouse,airbnb,high,Remote-friendly
+Coinbase,top_tech,coinbase,?,N,greenhouse,coinbase,high,Remote Canada
+Wealthsimple,regional_big,wealthsimple,Y,N,custom,https://www.wealthsimple.com/en-ca/careers,low,Toronto
+Faire,unicorn,faire,Y,N,greenhouse,faire,high,Toronto + KW
+Arctic Wolf,regional_big,arctic wolf|arctic wolf networks,Y,N,custom,https://arcticwolf.com/company/careers,low,Waterloo
+OpenText,regional_big,opentext|open text,Y,N,custom,https://careers.opentext.com,low,Waterloo HQ
+Thomson Reuters,top_tech,thomson reuters,Y,?,workday,thomsonreuters.wd5.myworkdayjobs.com/External_Career_Site,med,Toronto GenAI
+Tesla,top_tech,tesla,Y,N,custom,https://www.tesla.com/careers,low,Markham engineering
+Figma,unicorn,figma,N,N,greenhouse,figma,high,NYC/SF
+Lyft,top_tech,lyft,Y,N,greenhouse,lyft,high,Toronto office
+CrowdStrike,top_tech,crowdstrike,?,Y,workday,crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers,med,NoVA presence
+Appian,regional_big,appian,N,Y,custom,https://appian.com/about/careers,low,McLean HQ
+Geotab,regional_big,geotab,Y,N,custom,https://www.geotab.com/careers,low,Oakville

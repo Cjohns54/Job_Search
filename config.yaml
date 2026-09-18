@@ -1,0 +1,138 @@
+# Job Radar config. Two ideas drive everything:
+#   company_watch: every relevant posting at companies.csv, anywhere in North America (company matters most)
+#   regional_sweep: any company, but only in your regions (location matters most)
+# Both feed one deduped table that gets scored against your resume.
+
+profile:
+  resume_text: resume.txt          # or set RESUME_TEXT env var / secret
+  targets: >-
+    New grad / 0-3 YOE roles: software engineer, full stack, backend, AI engineer,
+    applied AI / LLM engineer, forward deployed engineer. Not mobile, not hardware/EE, not senior.
+
+roles:
+  include_title_keywords:
+    - software
+    - swe
+    - sde
+    - developer
+    - full stack
+    - fullstack
+    - full-stack
+    - backend
+    - back end
+    - back-end
+    - ai engineer
+    - applied ai
+    - ml engineer
+    - machine learning engineer
+    - llm
+    - genai
+    - generative ai
+    - forward deployed
+    - deployment strategist
+    - solutions engineer
+    - product engineer
+    - platform engineer
+    - cloud engineer
+    - member of technical staff
+  exclude_title_keywords:
+    - senior
+    - sr
+    - sr.
+    - staff
+    - principal
+    - lead
+    - manager
+    - mgr
+    - director
+    - vp
+    - head of
+    - architect
+    - distinguished
+    - iii
+    - iv
+    - mobile
+    - ios
+    - android
+    - intern
+    - internship
+    - co-op
+    - coop
+    - hardware
+    - electrical
+    - firmware
+    - asic
+    - asics
+    - analyst
+    - data scientist
+    - scientist
+    - fpga
+    - analog
+    - rf
+    - verification engineer
+    - sales
+    - account executive
+    - recruiter
+  max_years_required: 3            # drop if the description's lowest "X+ years experience" is above this
+  max_age_days: 21                 # ignore postings older than this (when a date is known)
+
+regions:
+  gta_kw:
+    label: Toronto / Waterloo
+    # matched anywhere in the location string
+    cities_unambiguous: [toronto, mississauga, markham, vaughan, oakville, brampton, kitchener, guelph, richmond hill, "north york", etobicoke, scarborough, "greater toronto", gta]
+    # only count when the string also says Ontario/Canada (Waterloo IA, Cambridge MA, Burlington VT exist)
+    cities_need_state: [waterloo, cambridge, burlington, milton, hamilton]
+    state_tokens: [", on", "ontario", "canada", " on,", " on "]
+  dc_nova:
+    label: Washington DC / Northern Virginia
+    cities_unambiguous: ["washington, dc", "washington dc", "washington, d.c", "washington d.c", "district of columbia", "tysons", "mclean", "reston", "herndon", "crystal city", "national landing"]
+    cities_need_state: [arlington, alexandria, fairfax, "falls church", chantilly, vienna, ashburn, sterling]
+    state_tokens: [", va", "virginia", " va,", " va "]
+
+# regions that count as "near you" for priority (remote Canada = work from Waterloo)
+home_regions: [gta_kw, dc_nova, remote_ca]
+
+sources:
+  ats: true                        # greenhouse / lever / ashby / workday / smartrecruiters / amazon
+  github: true
+  jobspy_regional: true
+  jobspy_custom_companies: true    # for watch companies with a custom careers site
+  github_listings:
+    - https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/.github/scripts/listings.json
+  company_search_terms: [software engineer, software developer, full stack, ai engineer, forward deployed]
+  workday_max_per_term: 100
+  max_detail_fetches: 400          # cap on per-job description fetches (Workday, SmartRecruiters) per run
+
+regional_sweep:
+  jobspy_sites: [indeed, linkedin, glassdoor, google]
+  hubs:                            # one search per hub x term; radius covers the suburbs
+    - {location: "Toronto, ON", distance_miles: 30, country: Canada}
+    - {location: "Waterloo, ON", distance_miles: 20, country: Canada}
+    - {location: "Arlington, VA", distance_miles: 20, country: USA}
+  search_terms:
+    - software engineer
+    - software developer
+    - full stack developer
+    - backend developer
+    - ai engineer
+    - forward deployed engineer
+    - new grad software engineer
+  hours_old: 36
+  results_per_query: 40
+  sleep_seconds: 4
+
+custom_company_search:
+  countries: [Canada, USA]
+  hours_old: 36
+  results_per_query: 25
+
+scoring:
+  llm_model: gpt-4.1-mini          # any OpenAI-compatible chat model; override with LLM_MODEL env
+  max_llm_jobs_per_run: 250
+  description_chars: 6000
+
+priority:
+  good_fit: 6
+  partial_fit: 4
+  min_keep: 3                      # below this, stored (so it's not re-scored) but hidden

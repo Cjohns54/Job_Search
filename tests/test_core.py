@@ -1,0 +1,102 @@
+import json
+from unittest import mock
+
+from jobradar.config import load_config, load_companies
+from jobradar.filters import CompanyMatcher, RegionClassifier, TitleFilter, min_years_required
+from jobradar.models import Job
+from jobradar.scoring import assign_priority, heuristic
+from jobradar.sources import ats
+
+CFG = load_config()
+COS = load_companies()
+
+
+def test_titles():
+    tf = TitleFilter(CFG)
+    assert tf.ok("Software Engineer, New Grad")
+    assert tf.ok("Member of Technical Staff")
+    assert tf.ok("Forward Deployed Engineer")
+    assert not tf.ok("Senior Software Engineer")
+    assert not tf.ok("iOS Engineer")
+    assert not tf.ok("Software Engineer Intern")
+    assert not tf.ok("Software Engineer III")
+
+
+def test_regions():
+    rc = RegionClassifier(CFG)
+    assert rc.classify("Waterloo, ON") == "gta_kw"
+    assert rc.classify("Waterloo, IA") == "us_other"
+    assert rc.classify("Cambridge, MA") == "us_other"
+    assert rc.classify("Arlington, VA") == "dc_nova"
+    assert rc.classify("Reston, Virginia") == "dc_nova"
+    assert rc.classify("Seattle, WA") == "us_other"
+    assert rc.classify("Remote - Canada") == "remote_ca"
+    assert rc.classify("Bengaluru, India") == "non_na"
+
+
+def test_company_match():
+    m = CompanyMatcher(COS)
+    assert m.match("Amazon Web Services, Inc.")["company"] == "Amazon"
+    assert m.match("Google DeepMind")["company"] == "Google"
+    assert m.match("Applebee's") is None
+    assert m.match("Synopsys Inc")["group"] == "past_employer"
+
+
+def test_yoe():
+    assert min_years_required("5+ years of experience in backend") == 5
+    assert min_years_required("0-2 years experience") is None or min_years_required("0-2 years experience") <= 2
+    assert min_years_required("founded 30 years ago") is None
+
+
+def test_priority():
+    j = Job("Cohere", "Software Engineer", "Toronto, ON", "u", "t", region="gta_kw", fit_score=8)
+    assert assign_priority(j, CFG) == 1
+    j = Job("Stripe", "Software Engineer", "Seattle, WA", "u", "t", region="us_other", fit_score=8,
+            watch_company="Stripe", watch_group="unicorn")
+    assert assign_priority(j, CFG) == 2
+    j.flags = ["clearance"]
+    assert assign_priority(j, CFG) == 3
+    j = Job("X", "Software Engineer", "Toronto", "u", "t", region="gta_kw", fit_score=1)
+    assert assign_priority(j, CFG) == 9
+
+
+def _fake(payload):
+    return mock.patch("jobradar.sources.ats.get_json", return_value=payload)
+
+
+def test_greenhouse_parse():
+    with _fake({"jobs": [{"title": "Software Engineer", "location": {"name": "Toronto, ON"},
+                          "absolute_url": "https://x/1", "first_published": "2026-09-15T10:00:00Z",
+                          "content": "&lt;p&gt;Build things&lt;/p&gt;"}]}):
+        j = list(ats.greenhouse("Stripe", "stripe", CFG))[0]
+    assert j.location == "Toronto, ON" and j.posted_at == "2026-09-15" and j.description == "Build things"
+
+
+def test_lever_parse():
+    with _fake([{"text": "Backend Engineer", "categories": {"location": "Washington, DC"},
+                 "hostedUrl": "https://x/2", "createdAt": 1789694971000, "descriptionPlain": "Go"}]):
+        j = list(ats.lever("Palantir", "palantir", CFG))[0]
+    assert j.title == "Backend Engineer" and j.posted_at.startswith("2026")
+
+
+def test_ashby_parse():
+    with _fake({"jobs": [{"title": "AI Engineer", "location": "Toronto", "secondaryLocations": [{"location": "Remote - Canada"}],
+                          "jobUrl": "https://x/3", "publishedAt": "2026-09-10T00:00:00Z", "descriptionPlain": "LLMs", "isRemote": False}]}):
+        j = list(ats.ashby("Cohere", "cohere", CFG))[0]
+    assert "Remote - Canada" in j.location
+
+
+def test_workday_parse():
+    page = {"total": 1, "jobPostings": [{"title": "Software Engineer", "externalPath": "/job/Toronto/SWE_123",
+                                         "locationsText": "Toronto, Canada", "postedOn": "Posted 2 Days Ago"}]}
+    with mock.patch("jobradar.sources.ats.post_json", return_value=page):
+        jobs = list(ats.workday("NVIDIA", "nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite", CFG))
+    assert len(jobs) == 1 and jobs[0].url.endswith("/NVIDIAExternalCareerSite/job/Toronto/SWE_123")
+    with _fake({"jobPostingInfo": {"jobDescription": "<p>2+ years experience</p>", "location": "Toronto, Canada"}}):
+        ats.enrich(jobs[0])
+    assert jobs[0].description == "2+ years experience"
+
+
+def test_heuristic():
+    s, why, _ = heuristic(Job("A", "Software Engineer I", "Toronto", "u", "t", description="TypeScript React AWS Python"))
+    assert s >= 7 and "typescript" in why

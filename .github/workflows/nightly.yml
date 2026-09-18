@@ -1,0 +1,65 @@
+name: Job Radar (nightly)
+
+on:
+  schedule:
+    - cron: "0 9 * * *"        # 09:00 UTC = 5am Toronto in summer (EDT), 4am in winter
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Limit sources (e.g. ats,github). Blank = all"
+        required: false
+        default: ""
+      detect_ats:
+        description: "Run detect-ats instead of the normal run"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-radar
+  cancel-in-progress: false
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Detect ATS boards
+        if: ${{ inputs.detect_ats }}
+        run: python -m jobradar detect-ats --all
+
+      - name: Run radar
+        if: ${{ !inputs.detect_ats }}
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          RESUME_TEXT: ${{ secrets.RESUME_TEXT }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: |
+          if [ -n "${{ inputs.only }}" ]; then python -m jobradar run --only "${{ inputs.only }}"; else python -m jobradar run; fi
+
+      - name: Save state (seen jobs) and today's report
+        if: ${{ !inputs.detect_ats }}
+        run: |
+          git config user.name "job-radar-bot"
+          git config user.email "job-radar-bot@users.noreply.github.com"
+          git add data/jobs.db output/
+          git diff --cached --quiet || git commit -m "radar: $(date -u +%F)"
+          git push
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.detect_ats }}
+        with:
+          name: job-radar-${{ github.run_id }}
+          path: output/latest.html
