@@ -36,6 +36,32 @@ def li_links(company: str) -> dict:
     }
 
 
+QUICK_HOSTS = ("greenhouse.io", "grnh.se", "lever.co", "ashbyhq.com", "smartrecruiters.com", "workable.com",
+               "applytojob.com", "bamboohr.com", "recruitee.com", "breezy.hr", "rippling.com", "careerpuck.com",
+               "recruiterflow.com", "jobvite.com", "teamtailor.com", "pinpointhq.com")
+LONG_HOSTS = ("myworkdayjobs.com", "amazon.jobs", "icims.com", "taleo.net", "successfactors", "oraclecloud.com",
+              "eightfold.ai", "dayforcehcm.com", "paycomonline", "brassring", "jobs.apple.com", "careers.microsoft.com",
+              "metacareers.com", "google.com/about/careers", "avature", "ultipro", "ukg", "adp.com", "ripplehire",
+              "phenompeople", "jobs.citi.com", "jobs.scotiabank.com")
+EFFORT = {"quick": "⚡ ~2 min", "medium": "~5 min", "long": "🕐 ~15 min · account"}
+
+
+def effort(url: str, apply_kind: str | None, apply_url: str | None) -> tuple[str, str]:
+    """(level, why). Based on where the application form actually lives."""
+    if apply_kind == "easy_apply":
+        return "quick", "LinkedIn Easy Apply"
+    target = (apply_url or url or "").lower()
+    if "gh_jid=" in target or any(h in target for h in QUICK_HOSTS):
+        return "quick", "Simple form, no account"
+    if any(h in target for h in LONG_HOSTS):
+        return "long", "Needs an account (Workday, iCIMS, etc.)"
+    if "linkedin.com/jobs" in target:
+        return "medium", "LinkedIn: apply type not checked yet"
+    if "indeed.com" in target:
+        return "medium", "Indeed: often Indeed Apply"
+    return "medium", "Company careers site"
+
+
 def load_status() -> dict:
     try:
         return json.loads(STATUS.read_text(encoding="utf-8"))
@@ -69,6 +95,7 @@ def jobs() -> list[dict]:
             r["people"] = []
         r["conns"] = match.at(r["company"]) if match else []
         r["links"] = li_links(r["company"])
+        r["effort"], r["effort_why"] = effort(r["url"], r.get("apply_kind"), r.get("apply_url"))
         for k in ("contacts_json", "description"):
             r.pop(k, None)
     return rows
@@ -182,6 +209,7 @@ main{padding:8px 20px 60px;max-width:1240px}
 a.t{color:var(--acc);text-decoration:none;font-weight:600}a.t:hover{text-decoration:underline}
 .chip{font:inherit;font-size:12px;border:0;border-radius:999px;padding:1px 9px;cursor:pointer;text-decoration:none;white-space:nowrap}
 .chip.c{background:var(--conn);color:var(--connfg)}.chip.r{background:var(--rec);color:var(--recfg);max-width:420px;overflow:hidden;text-overflow:ellipsis}
+.chip.e{cursor:default;border:1px solid var(--line);background:transparent;color:var(--mut)}.chip.e.quick{border-color:var(--ok);color:var(--ok)}.chip.e.long{border-color:var(--no);color:var(--no)}
 .chip.c0{background:var(--chip);color:var(--mut);cursor:default}
 .sub,.why,.meta,.links{color:var(--mut);font-size:12.5px}.meta{text-align:right;line-height:1.5}
 .links a{color:var(--mut);text-decoration:none;margin-right:12px}.links a:hover{color:var(--acc)}
@@ -214,7 +242,8 @@ dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog
   <select id="prio"><option value="">All priorities</option><option value="1">P1 near you, strong</option><option value="2">P2 top co, strong</option><option value="3">P3 near you, partial</option><option value="4">P4 other</option></select>
   <select id="region"><option value="">All regions</option><option value="gta_kw">Toronto/Waterloo</option><option value="dc_nova">DC/NoVA</option><option value="remote_ca">Remote Canada</option><option value="canada_other">Other Canada</option><option value="us">US (other/remote)</option></select>
   <select id="age"><option value="">Found: any time</option><option value="0">Found today</option><option value="3">Last 3 days</option><option value="7">Last 7 days</option></select>
-  <select id="sort"><option value="new">Newest, then priority</option><option value="fit">Best fit</option><option value="prio">Priority</option><option value="conns">Most connections</option></select>
+  <select id="eff"><option value="">Any effort</option><option value="quick">⚡ Quick (~2 min)</option><option value="medium">Medium (~5 min)</option><option value="long">Account needed (~15 min)</option><option value="notlong">Quick + medium</option></select>
+  <select id="sort"><option value="new">Newest, then priority</option><option value="fit">Best fit</option><option value="prio">Priority</option><option value="conns">Most connections</option><option value="effort">Quickest first</option></select>
   <label class="sw"><input type="checkbox" id="hasc"><i></i><span>Has connections</span></label>
   <label class="sw"><input type="checkbox" id="hasp"><i></i><span>Has recruiter</span></label>
   <input type="search" id="q" placeholder="Search title, company, location, people">
@@ -230,6 +259,7 @@ dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog
  <div style="text-align:right;margin-top:10px"><button class="btn" onclick="dlg.close()">Close</button></div>
 </dialog>
 <script>
+const ER={quick:0,medium:1,long:2};const EF={quick:"⚡ ~2 min",medium:"~5 min",long:"🕐 ~15 min · account"};
 const R={gta_kw:"Toronto/Waterloo",dc_nova:"DC/NoVA",remote_ca:"Remote Canada",canada_other:"Canada",us_other:"US",us_remote:"Remote US",unknown:"?"};
 let JOBS=[],CMETA={},st="todo";const open=new Set();
 const $=s=>document.querySelector(s),dlg=$("#dlg"),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -246,10 +276,10 @@ function row(j){
   </div>`:"";
  return `<div class="row${j.applied||j.ineligible?" done":""}">
   <div class="fit">${j.fit_score??""}</div>
-  <div><div class="tl"><span><span class="p">P${j.priority}</span><a class="t" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a></span>${cchip}${rchip}</div>
+  <div><div class="tl"><span><span class="p">P${j.priority}</span><a class="t" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a></span><span class="chip e ${j.effort}" title="${esc(j.effort_why)}">${EF[j.effort]}</span>${cchip}${rchip}</div>
    <div class="sub">${esc(j.company)} · ${esc(j.location)}${(j.flags||"").split(",").filter(Boolean).map(f=>`<span class="flag">${esc(f)}</span>`).join("")}</div>
    <div class="why">${esc(j.why_fit)}${j.concerns?" · ⚠ "+esc(j.concerns):""}</div>
-   <div class="links"><a href="${esc(L.first)}" target="_blank" rel="noopener">1st-degree ↗</a><a href="${esc(L.second)}" target="_blank" rel="noopener">2nd-degree ↗</a><a href="${esc(L.alumni)}" target="_blank" rel="noopener">Guelph alumni ↗</a><a href="${esc(L.recruiters)}" target="_blank" rel="noopener">Recruiters ↗</a></div>
+   <div class="links">${j.apply_url?`<a href="${esc(j.apply_url)}" target="_blank" rel="noopener"><b>Apply form ↗</b></a>`:""}<a href="${esc(L.first)}" target="_blank" rel="noopener">1st-degree ↗</a><a href="${esc(L.second)}" target="_blank" rel="noopener">2nd-degree ↗</a><a href="${esc(L.alumni)}" target="_blank" rel="noopener">Guelph alumni ↗</a><a href="${esc(L.recruiters)}" target="_blank" rel="noopener">Recruiters ↗</a></div>
    ${panel}</div>
   <div class="meta">${esc(R[j.region]||j.region)}<br>${esc(j.source)}<br>found ${esc(j.first_seen)}</div>
   <div class="tg">
@@ -266,6 +296,7 @@ function view(){
   if(p&&String(j.priority)!==p)return false;
   if(rg&&(rg==="us"?!(j.region==="us_other"||j.region==="us_remote"):j.region!==rg))return false;
   if(age!==""&&daysAgo(j.first_seen)>+age)return false;
+  const ef=$("#eff").value;if(ef&&(ef==="notlong"?j.effort==="long":j.effort!==ef))return false;
   if($("#hasc").checked&&!(j.conns||[]).length)return false;
   if($("#hasp").checked&&!(j.people||[]).length)return false;
   if(q&&!(j.title+" "+j.company+" "+j.location+" "+[...(j.people||[]),...(j.conns||[])].map(x=>x.name).join(" ")).toLowerCase().includes(q))return false;
@@ -273,7 +304,8 @@ function view(){
  const f=(a,b)=>(b.fit_score||0)-(a.fit_score||0);
  v.sort({new:(a,b)=>(b.first_seen||"").localeCompare(a.first_seen||"")||a.priority-b.priority||f(a,b),
   fit:(a,b)=>f(a,b)||a.priority-b.priority,prio:(a,b)=>a.priority-b.priority||f(a,b),
-  conns:(a,b)=>(b.conns||[]).length-(a.conns||[]).length||a.priority-b.priority}[so]);
+  conns:(a,b)=>(b.conns||[]).length-(a.conns||[]).length||a.priority-b.priority,
+  effort:(a,b)=>ER[a.effort]-ER[b.effort]||a.priority-b.priority||f(a,b)}[so]);
  const ap=JOBS.filter(j=>j.applied).length,ie=JOBS.filter(j=>j.ineligible).length;
  $("#count").textContent=`${v.length} shown · ${JOBS.length} total · ${ap} applied · ${ie} ineligible`;
  $("#cmeta").textContent=CMETA.count?`${CMETA.count} imported ${CMETA.imported}`:"not imported yet";
@@ -290,7 +322,7 @@ $("#list").addEventListener("change",async e=>{
  setTimeout(view,250)});
 $("#status").addEventListener("click",e=>{if(!e.target.dataset.v)return;st=e.target.dataset.v;
  document.querySelectorAll("#status button").forEach(b=>b.classList.toggle("on",b===e.target));view()});
-["#prio","#region","#age","#sort","#hasc","#hasp"].forEach(s=>$(s).addEventListener("change",view));$("#q").addEventListener("input",view);
+["#prio","#region","#age","#eff","#sort","#hasc","#hasp"].forEach(s=>$(s).addEventListener("change",view));$("#q").addEventListener("input",view);
 // import dialog
 const drop=$("#drop"),file=$("#file"),msg=$("#msg");
 $("#imp").onclick=()=>{msg.className="msg";msg.textContent="Stays on this Mac only. It's never uploaded to GitHub.";dlg.showModal()};

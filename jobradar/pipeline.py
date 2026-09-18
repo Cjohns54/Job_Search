@@ -138,12 +138,14 @@ def find_contacts(store: Store, cfg: dict) -> None:
     found = checked = 0
     for row in todo:
         try:
-            people = linkedin_contacts.fetch(row["url"])
+            got = linkedin_contacts.fetch(row["url"])
         except Exception as e:
             log.warning("Stopping hiring-team lookups early: %s", e)
             break
-        if people is not None:
+        if got is not None:
+            people, info = got
             store.set_contacts(row["key"], people)
+            store.set_apply(row["key"], info)
             checked += 1
             found += bool(people)
         time.sleep(c.get("sleep_seconds", 1.5))

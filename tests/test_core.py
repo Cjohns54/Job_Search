@@ -131,6 +131,8 @@ def test_store_contacts(tmp_path):
     s.add(j)
     assert [r["key"] for r in s.needs_contact(10)] == ["k1"]
     s.set_contacts("k1", [{"name": "Champa B", "title": "Sourcing", "url": "u"}])
+    assert len(s.needs_contact(10)) == 1                      # still needs apply info
+    s.set_apply("k1", {"kind": "easy_apply", "url": ""})
     assert s.needs_contact(10) == [] and s.rows()[0]["contact_name"] == "Champa B"
 
 
@@ -166,3 +168,18 @@ def test_connections_rejects_other_files():
     from jobradar import connections as c
     with pytest.raises(ValueError):
         c.parse_export(b"just,some,csv\n1,2,3")
+
+
+def test_effort_and_apply_info():
+    from jobradar.app import effort
+    from jobradar.sources.linkedin_contacts import apply_info
+    assert effort("https://job-boards.greenhouse.io/stripe/jobs/1", None, None)[0] == "quick"
+    assert effort("https://stripe.com/jobs/search?gh_jid=8212508", None, None)[0] == "quick"
+    assert effort("https://nvidia.wd5.myworkdayjobs.com/x/job/1", None, None)[0] == "long"
+    assert effort("https://www.amazon.jobs/en/jobs/1", None, None)[0] == "long"
+    assert effort("https://www.linkedin.com/jobs/view/1", "easy_apply", None)[0] == "quick"
+    assert effort("https://www.linkedin.com/jobs/view/1", "external", "https://acme.wd1.myworkdayjobs.com/j")[0] == "long"
+    assert effort("https://www.linkedin.com/jobs/view/1", None, None)[0] == "medium"
+    ext = '<code id="applyUrl" style="display: none"><!--"https://www.linkedin.com/jobs/view/externalApply/1?url=https%3A%2F%2Fjobs%2Elever%2Eco%2Facme%2F123&amp;urlHash=x"--></code>'
+    assert apply_info(ext) == {"kind": "external", "url": "https://jobs.lever.co/acme/123"}
+    assert apply_info('<button class="apply-button">Easy Apply</button>')["kind"] == "easy_apply"

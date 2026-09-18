@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   company TEXT, title TEXT, location TEXT, region TEXT, watch_company TEXT, source TEXT,
   fit_score REAL, why_fit TEXT, concerns TEXT, years_required INTEGER, flags TEXT,
   priority INTEGER, status TEXT DEFAULT 'new',
-  contact_name TEXT, contact_title TEXT, contact_url TEXT, contacts_json TEXT, contact_checked TEXT
+  contact_name TEXT, contact_title TEXT, contact_url TEXT, contacts_json TEXT, contact_checked TEXT,
+  apply_url TEXT, apply_kind TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_url ON jobs(url);
 CREATE INDEX IF NOT EXISTS idx_jobs_first_seen ON jobs(first_seen);
@@ -27,7 +28,7 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
         have = {r[1] for r in self.db.execute("PRAGMA table_info(jobs)")}
-        for col in ("contact_name", "contact_title", "contact_url", "contacts_json", "contact_checked"):
+        for col in ("contact_name", "contact_title", "contact_url", "contacts_json", "contact_checked", "apply_url", "apply_kind"):
             if col not in have:                                  # upgrade older jobs.db in place
                 self.db.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
         self._keys = {r[0] for r in self.db.execute("SELECT key FROM jobs")}
@@ -50,8 +51,13 @@ class Store:
 
     def needs_contact(self, limit: int) -> list[sqlite3.Row]:
         return list(self.db.execute(
-            "SELECT key, url FROM jobs WHERE priority <= 4 AND contact_checked IS NULL AND url LIKE '%linkedin.com/jobs/view/%' "
+            "SELECT key, url FROM jobs WHERE priority <= 4 AND (contact_checked IS NULL OR apply_kind IS NULL) AND url LIKE '%linkedin.com/jobs/view/%' "
             "ORDER BY first_seen DESC, priority ASC LIMIT ?", (limit,)))
+
+    def set_apply(self, key: str, info: dict) -> None:
+        if info:
+            self.db.execute("UPDATE jobs SET apply_kind=?, apply_url=? WHERE key=?",
+                            (info.get("kind"), info.get("url") or None, key))
 
     def set_contacts(self, key: str, people: list[dict]) -> None:
         import json

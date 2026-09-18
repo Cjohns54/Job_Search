@@ -51,8 +51,21 @@ def parse(page: str) -> list[dict]:
     return people
 
 
-def fetch(url: str) -> list[dict] | None:
-    """None = couldn't check (not LinkedIn / blocked); [] = checked, nobody listed."""
+def apply_info(page: str) -> dict:
+    """Offsite jobs carry <code id="applyUrl"><!--"...externalApply...?url=<real form>"--></code>; Easy Apply jobs don't."""
+    from urllib.parse import parse_qs, unquote, urlparse
+    m = re.search(r'<code[^>]*id="applyUrl"[^>]*>\s*<!--\s*"(.*?)"\s*-->', page, re.S)
+    if m:
+        raw = html.unescape(m.group(1))
+        target = parse_qs(urlparse(raw).query).get("url", [raw])[0]
+        return {"kind": "external", "url": unquote(target)}
+    if re.search(r"easy apply|easyApply|sign-up-modal", page, re.I) or "apply-button" in page:
+        return {"kind": "easy_apply", "url": ""}
+    return {"kind": "unknown", "url": ""}
+
+
+def fetch(url: str) -> tuple[list[dict], dict] | None:
+    """None = couldn't check (not LinkedIn / blocked). Else (people, apply_info)."""
     jid = job_id(url)
     if not jid:
         return None
@@ -61,7 +74,7 @@ def fetch(url: str) -> list[dict] | None:
         raise RuntimeError("rate limited")
     if r.status_code != 200:
         return None
-    return parse(r.text)
+    return parse(r.text), apply_info(r.text)
 
 
 def people_search_url(company: str) -> str:
