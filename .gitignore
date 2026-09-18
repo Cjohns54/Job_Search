@@ -6,3 +6,5 @@ service_account.json
 .pytest_cache/
 resume.txt
 .DS_Store
+data/connections.csv
+data/connections_meta.json

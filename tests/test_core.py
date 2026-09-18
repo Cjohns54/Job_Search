@@ -132,3 +132,37 @@ def test_store_contacts(tmp_path):
     assert [r["key"] for r in s.needs_contact(10)] == ["k1"]
     s.set_contacts("k1", [{"name": "Champa B", "title": "Sourcing", "url": "u"}])
     assert s.needs_contact(10) == [] and s.rows()[0]["contact_name"] == "Champa B"
+
+
+EXPORT = """Notes:
+"When exporting your connection data, you may notice that some of the email addresses are missing."
+
+First Name,Last Name,URL,Email Address,Company,Position,Connected On
+Sarah,Kim,https://www.linkedin.com/in/sarahkim,,Amazon Web Services (AWS),Software Development Engineer II,03 Mar 2024
+Jordan,Patel,https://www.linkedin.com/in/jpatel,,Hays Specialist Recruitment,Recruitment Consultant,11 Jan 2025
+Alex,Ng,https://www.linkedin.com/in/alexng,,Metalab,Designer,01 Feb 2023
+Sam,Lee,https://www.linkedin.com/in/samlee,,Self Employed,Founder,01 Feb 2023
+"""
+
+
+def test_connections_parse_and_match(tmp_path):
+    import io, zipfile
+    from jobradar import connections as c
+    rows = c.parse_export(EXPORT.encode())
+    assert len(rows) == 4 and rows[0]["name"] == "Sarah Kim" and rows[0]["company"].startswith("Amazon")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("Basic_LinkedInDataExport/Connections.csv", EXPORT)
+    assert len(c.parse_export(buf.getvalue())) == 4
+    m = c.Matcher(rows)
+    assert [p["name"] for p in m.at("Amazon")] == ["Sarah Kim"]           # watch alias: AWS -> Amazon
+    assert [p["name"] for p in m.at("Hays")] == ["Jordan Patel"]          # prefix match
+    assert m.at("Meta") == []                                             # Metalab is not Meta
+    assert m.at("Self Employed") == []
+
+
+def test_connections_rejects_other_files():
+    import pytest
+    from jobradar import connections as c
+    with pytest.raises(ValueError):
+        c.parse_export(b"just,some,csv\n1,2,3")
