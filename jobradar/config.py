@@ -4,12 +4,13 @@ import csv
 import os
 from pathlib import Path
 
-import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_config(path: str | Path | None = None) -> dict:
+    import yaml                      # imported here so the tracker app needs no extra packages
+
     with open(path or ROOT / "config.yaml") as f:
         return yaml.safe_load(f)
 

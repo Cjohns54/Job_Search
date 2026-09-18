@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from . import pipeline
 
 
 def main():
@@ -21,6 +20,7 @@ def main():
                         format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     if a.cmd == "run":
+        from . import pipeline
         pipeline.run(only=set(a.only.split(",")) if a.only else None, use_llm=not a.no_llm)
     elif a.cmd == "app":
         from .app import run as run_app
