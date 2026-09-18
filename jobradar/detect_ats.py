@@ -1,4 +1,4 @@
-"""Probe Greenhouse / Lever / Ashby for each company so companies.csv slugs can be verified or upgraded."""
+"""Check every company's configured job board, and look for Greenhouse/Lever/Ashby boards for the custom ones."""
 from __future__ import annotations
 
 import re
@@ -8,7 +8,7 @@ from .http import SESSION
 
 PROBES = {
     "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{s}/jobs",
-    "lever": "https://api.lever.co/v0/postings/{s}?mode=json&limit=1",
+    "lever": "https://api.lever.co/v0/postings/{s}?mode=json",
     "ashby": "https://api.ashbyhq.com/posting-api/job-board/{s}",
 }
 
@@ -16,32 +16,49 @@ PROBES = {
 def candidates(c: dict) -> list[str]:
     base = re.sub(r"\(.*?\)", "", c["company"]).lower()
     words = re.findall(r"[a-z0-9]+", base)
-    out = ["".join(words), "-".join(words), words[0] if words else ""]
-    if c["ats"] in PROBES and c.get("ats_slug"):
-        out.insert(0, c["ats_slug"])
+    out = ["".join(words), "-".join(words)]
     return [s for i, s in enumerate(out) if s and s not in out[:i]]
 
 
-def probe(ats: str, slug: str) -> int | None:
+def _count(ats: str, slug: str) -> int | None:
+    """Number of open jobs on the board, or None if the board doesn't answer."""
     try:
-        r = SESSION.get(PROBES[ats].format(s=slug), timeout=15)
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        jobs = data if isinstance(data, list) else data.get("jobs", [])
-        return len(jobs)
+        if ats in PROBES:
+            r = SESSION.get(PROBES[ats].format(s=slug), timeout=20)
+            if r.status_code != 200:
+                return None
+            d = r.json()
+            return len(d if isinstance(d, list) else d.get("jobs", []))
+        if ats == "workday":
+            host, site = slug.split("/", 1)
+            r = SESSION.post(f"https://{host}/wday/cxs/{host.split('.')[0]}/{site}/jobs",
+                             json={"appliedFacets": {}, "limit": 1, "offset": 0, "searchText": ""}, timeout=20)
+            return r.json().get("total") if r.status_code == 200 else None
+        if ats == "smartrecruiters":
+            r = SESSION.get(f"https://api.smartrecruiters.com/v1/companies/{slug}/postings",
+                            params={"limit": 1}, timeout=20)
+            return r.json().get("totalFound") if r.status_code == 200 else None
+        if ats == "amazon":
+            r = SESSION.get("https://www.amazon.jobs/en/search.json",
+                            params={"base_query": "software engineer", "result_limit": 1}, timeout=20)
+            return r.json().get("hits") if r.status_code == 200 else None
     except Exception:
         return None
+    return None
 
 
 def detect(check_all: bool = False) -> None:
+    print(f"{'COMPANY':<36} {'CONFIGURED':<55} RESULT")
     for c in load_companies():
-        if not check_all and c["ats"] in ("workday", "amazon", "smartrecruiters") and c["ats_confidence"] != "low":
-            continue
-        if not check_all and c["ats"] in PROBES and c["ats_confidence"] == "high":
-            n = probe(c["ats"], c["ats_slug"])
-            print(f"{c['company']:<36} {c['ats']}:{c['ats_slug']:<20} {'OK ' + str(n) + ' jobs' if n is not None else 'NOT FOUND'}")
-            continue
-        hits = [(a, s, n) for s in candidates(c) for a in PROBES if (n := probe(a, s)) is not None]
-        found = ", ".join(f"{a}:{s} ({n} jobs)" for a, s, n in hits) or "none (keep custom)"
-        print(f"{c['company']:<36} {found}")
+        conf = f"{c['ats']}:{c['ats_slug']}" if c["ats"] != "custom" else "custom"
+        if c["ats"] != "custom":
+            n = _count(c["ats"], c["ats_slug"])
+            status = f"OK ({n} jobs)" if n else ("EMPTY (0 jobs)" if n == 0 else "BROKEN")
+            if n:
+                print(f"{c['company']:<36} {conf[:55]:<55} {status}")
+                continue
+        else:
+            status = ""
+        hits = [(a, s, n) for s in candidates(c) for a in PROBES if (n := _count(a, s))]
+        alt = ", ".join(f"{a}:{s} ({n})" for a, s, n in hits) or "no public board found"
+        print(f"{c['company']:<36} {conf[:55]:<55} {status + ' | ' if status else ''}{alt}")

@@ -25,7 +25,7 @@ Shopify,top_tech,shopify,Y,N,custom,https://www.shopify.com/careers,med,Toronto/
 Uber,top_tech,uber,Y,?,custom,https://www.uber.com/us/en/careers,med,Toronto hub
 Stripe,unicorn,stripe,Y,?,greenhouse,stripe,high,Toronto office
 Databricks,unicorn,databricks,?,?,greenhouse,databricks,high,New grad program
-Snowflake,top_tech,snowflake,Y,?,custom,https://careers.snowflake.com,low,Toronto office
+Snowflake,top_tech,snowflake,Y,?,ashby,snowflake,high,Toronto office
 Intuit,top_tech,intuit,Y,N,custom,https://jobs.intuit.com,med,Toronto office
 Capital One,top_tech,capital one,Y,Y,workday,capitalone.wd12.myworkdayjobs.com/Capital_One,high,Toronto + McLean HQ
 ServiceNow,top_tech,servicenow,Y,?,smartrecruiters,ServiceNow,med,Toronto office
@@ -42,7 +42,7 @@ Instacart,top_tech,instacart|maplebear,Y,N,greenhouse,instacart,high,Toronto hub
 Pinterest,top_tech,pinterest,Y,N,greenhouse,pinterest,high,Toronto office
 Airbnb,top_tech,airbnb,?,N,greenhouse,airbnb,high,Remote-friendly
 Coinbase,top_tech,coinbase,?,N,greenhouse,coinbase,high,Remote Canada
-Wealthsimple,regional_big,wealthsimple,Y,N,custom,https://www.wealthsimple.com/en-ca/careers,low,Toronto
+Wealthsimple,regional_big,wealthsimple,Y,N,ashby,wealthsimple,high,Toronto
 Faire,unicorn,faire,Y,N,greenhouse,faire,high,Toronto + KW
 Arctic Wolf,regional_big,arctic wolf|arctic wolf networks,Y,N,custom,https://arcticwolf.com/company/careers,low,Waterloo
 OpenText,regional_big,opentext|open text,Y,N,custom,https://careers.opentext.com,low,Waterloo HQ
@@ -51,5 +51,5 @@ Tesla,top_tech,tesla,Y,N,custom,https://www.tesla.com/careers,low,Markham engine
 Figma,unicorn,figma,N,N,greenhouse,figma,high,NYC/SF
 Lyft,top_tech,lyft,Y,N,greenhouse,lyft,high,Toronto office
 CrowdStrike,top_tech,crowdstrike,?,Y,workday,crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers,med,NoVA presence
-Appian,regional_big,appian,N,Y,custom,https://appian.com/about/careers,low,McLean HQ
-Geotab,regional_big,geotab,Y,N,custom,https://www.geotab.com/careers,low,Oakville
+Appian,regional_big,appian,N,Y,greenhouse,appian,high,McLean HQ
+Geotab,regional_big,geotab,Y,N,greenhouse,geotab,high,Oakville
