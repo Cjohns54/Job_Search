@@ -105,7 +105,7 @@ sources:
   max_detail_fetches: 400          # cap on per-job description fetches (Workday, SmartRecruiters) per run
 
 regional_sweep:
-  jobspy_sites: [indeed, linkedin, glassdoor, google]
+  jobspy_sites: [indeed, linkedin, google]   # glassdoor dropped: its location lookup fails for these cities
   hubs:                            # one search per hub x term; radius covers the suburbs
     - {location: "Toronto, ON", distance_miles: 30, country: Canada}
     - {location: "Waterloo, ON", distance_miles: 20, country: Canada}
