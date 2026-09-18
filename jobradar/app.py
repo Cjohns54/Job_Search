@@ -14,7 +14,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .config import ROOT
-from .sources.linkedin_contacts import people_search_url
+
+
+
+def people_search_url(company: str) -> str:
+    from urllib.parse import quote
+    return ("https://www.linkedin.com/search/results/people/?keywords="
+            + quote(f"{company} recruiter") + "&origin=GLOBAL_SEARCH_HEADER")
+
 
 DB = ROOT / "data" / "jobs.db"
 STATUS = ROOT / "data" / "status.json"
