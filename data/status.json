@@ -1,14 +1,42 @@
 {
+ "03d917c68285e35e": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "07c3c6ade0d33cc8": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
  "0c6baab32ff5389f": {
   "applied": true,
+  "updated": "2026-09-18"
+ },
+ "118053e3c180b411": {
+  "ineligible": true,
   "updated": "2026-09-18"
  },
  "12b39717917214dc": {
   "ineligible": true,
   "updated": "2026-09-18"
  },
+ "13de538b33a0a712": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "150081aa79c3e589": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "1a75dcc576ccbb6a": {
+  "ineligible": true,
+  "updated": "2026-09-18"
+ },
  "2153eff617f4be42": {
   "applied": true,
+  "updated": "2026-09-18"
+ },
+ "2217d57f468e023d": {
+  "ineligible": true,
   "updated": "2026-09-18"
  },
  "22884b487801754e": {
@@ -19,9 +47,21 @@
   "applied": true,
   "updated": "2026-09-18"
  },
+ "2561b9aefc4849c7": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "29ca8f40c1e217ba": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
  "2c5d9ccbf4c2581a": {
   "ineligible": true,
   "updated": "2026-09-18"
+ },
+ "3436bdff481df32f": {
+  "applied": true,
+  "updated": "2026-09-19"
  },
  "379fbe89f54aabc1": {
   "ineligible": true,
@@ -31,8 +71,20 @@
   "applied": true,
   "updated": "2026-09-18"
  },
+ "3ecffd3e4ad6d334": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
  "44e76d116921af68": {
   "applied": true,
+  "updated": "2026-09-18"
+ },
+ "4b0367962f8e7fdd": {
+  "ineligible": true,
+  "updated": "2026-09-19"
+ },
+ "5591fca83a3d2fd3": {
+  "ineligible": true,
   "updated": "2026-09-18"
  },
  "5682a6af849fd7b6": {
@@ -43,15 +95,47 @@
   "applied": true,
   "updated": "2026-09-18"
  },
+ "59a9263354cd7054": {
+  "ineligible": true,
+  "updated": "2026-09-18"
+ },
  "5b9a326b67c68712": {
   "applied": true,
   "updated": "2026-09-18"
+ },
+ "5c47fd37d2aacb84": {
+  "ineligible": true,
+  "updated": "2026-09-18"
+ },
+ "5ddb4e9eb9062e3f": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "615cd543a7557112": {
+  "ineligible": true,
+  "updated": "2026-09-19"
  },
  "69a1131ccad90c41": {
   "applied": true,
   "updated": "2026-09-18"
  },
  "6aedc18b5d2a781a": {
+  "ineligible": true,
+  "updated": "2026-09-18"
+ },
+ "716aea8728e8dace": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "789213fb07e02251": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "8217d57e66a48d32": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "887b8f004be1a441": {
   "ineligible": true,
   "updated": "2026-09-18"
  },
@@ -67,12 +151,24 @@
   "ineligible": true,
   "updated": "2026-09-18"
  },
+ "8fd798e3cba2880b": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "906b10e6e7ab0a09": {
+  "ineligible": true,
+  "updated": "2026-09-19"
+ },
  "913ae15d86512631": {
   "applied": true,
   "updated": "2026-09-18"
  },
  "99fce7fe5d6bde22": {
   "applied": true,
+  "updated": "2026-09-18"
+ },
+ "9c26826d4efb0995": {
+  "ineligible": true,
   "updated": "2026-09-18"
  },
  "a098658aeceb6f68": {
@@ -84,13 +180,33 @@
   "ineligible": true,
   "updated": "2026-09-18"
  },
+ "a20d86f8a3f7761f": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
  "ac1cd422b27d6919": {
   "applied": true,
   "updated": "2026-09-18"
  },
+ "ac278d9b2f88e64c": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
  "b288a8c46d6c7079": {
   "ineligible": true,
   "updated": "2026-09-18"
+ },
+ "b29aebe1ed3f25e0": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "b4ad3a2ca398b6cb": {
+  "applied": true,
+  "updated": "2026-09-19"
+ },
+ "c0d8b91862417ed8": {
+  "applied": true,
+  "updated": "2026-09-19"
  },
  "c65043ef23418226": {
   "applied": true,
@@ -117,6 +233,18 @@
   "updated": "2026-09-18"
  },
  "ea743ebc1c18d456": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "f55d8263f1ded639": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "f663884bbedf27bd": {
+  "applied": true,
+  "updated": "2026-09-18"
+ },
+ "f71f14ee2fbbee46": {
   "applied": true,
   "updated": "2026-09-18"
  },
