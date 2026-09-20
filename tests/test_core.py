@@ -183,3 +183,38 @@ def test_effort_and_apply_info():
     ext = '<code id="applyUrl" style="display: none"><!--"https://www.linkedin.com/jobs/view/externalApply/1?url=https%3A%2F%2Fjobs%2Elever%2Eco%2Facme%2F123&amp;urlHash=x"--></code>'
     assert apply_info(ext) == {"kind": "external", "url": "https://jobs.lever.co/acme/123"}
     assert apply_info('<button class="apply-button">Easy Apply</button>')["kind"] == "easy_apply"
+
+
+def test_assist_knowledge_and_prompt(tmp_path, monkeypatch):
+    import io, zipfile
+    from jobradar import assist
+    monkeypatch.setattr(assist, "KB", tmp_path / "kb.json")
+    monkeypatch.setattr(assist, "SETTINGS", tmp_path / "s.json")
+    monkeypatch.setattr(assist, "CACHE", tmp_path / "gen.json")
+    monkeypatch.setattr(assist, "RESUME", tmp_path / "resume.txt")
+    (tmp_path / "resume.txt").write_text("Connor Johnson, Computer Engineering, Guelph 2025.")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("word/document.xml", "<w:p><w:t>Answer </w:t><w:t>one</w:t></w:p><w:p><w:t>two</w:t></w:p>")
+    assert assist.extract_text("a.docx", buf.getvalue()) == "Answer one\ntwo"
+    assert assist.extract_text("a.txt", b"plain") == "plain"
+
+    rows = assist.add_entry("Why AI", "Built agentic systems at EasierEmails")
+    assert len(rows) == 1 and assist.entries()[0]["title"] == "Why AI"
+    assist.save_settings({"api_key": "sk-x", "email": "me@x.com", "voice": "third"})
+    assert assist.public_settings() == {"has_key": True, "model": "gpt-5-mini", "voice": "third",
+                                        "phone": "", "email": "me@x.com", "linkedin": "", "github": ""}
+
+    seen = {}
+    monkeypatch.setattr(assist, "_chat", lambda prompt, **kw: seen.setdefault("p", prompt) and "" or "EMAIL BODY")
+    job = {"key": "k1", "company": "Hays", "title": "Full Stack Developer", "location": "Mississauga, ON",
+           "url": "https://www.linkedin.com/jobs/view/999", "description": "React, TypeScript, AWS",
+           "contact_name": "Champa B", "contact_title": "Senior Sourcing Partner"}
+    assert assist.generate("email", job) == "EMAIL BODY"
+    p = seen["p"]
+    for must in ("Hi [Name],", "Champa B", "Full Stack Developer", "linkedin.com/jobs/view/999",
+                 "Built agentic systems", "third person", "any relevant opportunities"):
+        assert must in p
+    assert assist.cached("k1")["email"]["text"] == "EMAIL BODY"
+    assert assist.delete_entry(rows[0]["id"]) == []

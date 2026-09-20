@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   fit_score REAL, why_fit TEXT, concerns TEXT, years_required INTEGER, flags TEXT,
   priority INTEGER, status TEXT DEFAULT 'new',
   contact_name TEXT, contact_title TEXT, contact_url TEXT, contacts_json TEXT, contact_checked TEXT,
-  apply_url TEXT, apply_kind TEXT
+  apply_url TEXT, apply_kind TEXT, description TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_url ON jobs(url);
 CREATE INDEX IF NOT EXISTS idx_jobs_first_seen ON jobs(first_seen);
@@ -28,7 +28,7 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
         have = {r[1] for r in self.db.execute("PRAGMA table_info(jobs)")}
-        for col in ("contact_name", "contact_title", "contact_url", "contacts_json", "contact_checked", "apply_url", "apply_kind"):
+        for col in ("contact_name", "contact_title", "contact_url", "contacts_json", "contact_checked", "apply_url", "apply_kind", "description"):
             if col not in have:                                  # upgrade older jobs.db in place
                 self.db.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
         self._keys = {r[0] for r in self.db.execute("SELECT key FROM jobs")}
@@ -40,11 +40,11 @@ class Store:
     def add(self, job: Job, status: str = "new") -> None:
         self.db.execute(
             "INSERT OR IGNORE INTO jobs (key, url, first_seen, posted_at, company, title, location, region, "
-            "watch_company, source, fit_score, why_fit, concerns, years_required, flags, priority, status) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "watch_company, source, fit_score, why_fit, concerns, years_required, flags, priority, status, description) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (job.key, job.url, today().isoformat(), job.posted_at, job.company, job.title, job.location,
              job.region, job.watch_company, job.source, job.fit_score, job.why_fit, job.concerns,
-             job.years_required, ",".join(job.flags), job.priority, status))
+             job.years_required, ",".join(job.flags), job.priority, status, (job.description or "")[:4000] or None))
         self._keys.add(job.key)
         if job.url:
             self._urls.add(job.url)
@@ -66,6 +66,16 @@ class Store:
             "UPDATE jobs SET contact_name=?, contact_title=?, contact_url=?, contacts_json=?, contact_checked=? WHERE key=?",
             (top.get("name"), top.get("title"), top.get("url"), json.dumps(people) if people else None,
              today().isoformat(), key))
+
+    def prune_descriptions(self, keep_days: int = 30) -> int:
+        """Descriptions are only needed while a job is fresh; drop old ones so jobs.db stays small."""
+        import datetime as _dt
+        cutoff = (today() - _dt.timedelta(days=keep_days)).isoformat()
+        cur = self.db.execute("UPDATE jobs SET description=NULL WHERE description IS NOT NULL AND first_seen < ?", (cutoff,))
+        return cur.rowcount
+
+    def get(self, key: str):
+        return self.db.execute("SELECT * FROM jobs WHERE key = ?", (key,)).fetchone()
 
     def commit(self):
         self.db.commit()

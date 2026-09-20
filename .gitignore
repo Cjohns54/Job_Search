@@ -8,3 +8,6 @@ resume.txt
 .DS_Store
 data/connections.csv
 data/connections_meta.json
+data/knowledge.json
+data/settings.json
+data/generated.json

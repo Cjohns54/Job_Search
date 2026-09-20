@@ -16,7 +16,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import quote
 
-from . import connections
+from . import assist, connections
 from .config import ROOT
 
 DB = ROOT / "data" / "jobs.db"
@@ -97,9 +97,18 @@ def jobs() -> list[dict]:
         r["conns"] = match.at(r["company"]) if match else []
         r["links"] = li_links(r["company"])
         r["effort"], r["effort_why"] = effort(r["url"], r.get("apply_kind"), r.get("apply_url"))
+        r["gen"] = sorted(assist.cached(r["key"]).keys())
         for k in ("contacts_json", "description"):
             r.pop(k, None)
     return rows
+
+
+def job_row(key: str) -> dict | None:
+    db = sqlite3.connect(DB)
+    db.row_factory = sqlite3.Row
+    row = db.execute("SELECT * FROM jobs WHERE key = ?", (key,)).fetchone()
+    db.close()
+    return dict(row) if row else None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -120,6 +129,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/jobs"):
             self._json(200, {"jobs": jobs(), "connections": connections.meta()})
+        elif self.path.startswith("/api/about"):
+            self._json(200, {"entries": assist.entries(), "settings": assist.public_settings()})
+        elif self.path.startswith("/api/generated"):
+            key = self.path.split("key=")[-1]
+            self._json(200, assist.cached(key))
         elif self.path in ("/", "/index.html"):
             self._send(200, PAGE.encode(), "text/html; charset=utf-8")
         else:
@@ -134,6 +148,33 @@ class Handler(BaseHTTPRequestHandler):
                 rows = connections.parse_export(self.rfile.read(n))
                 connections.save(rows)
                 return self._json(200, {"count": len(rows)})
+            except Exception as e:
+                return self._json(400, {"error": str(e)})
+        if self.path.startswith("/api/about") or self.path == "/api/settings" or self.path == "/api/generate":
+            raw = self.rfile.read(n)
+            try:
+                if self.path == "/api/about/file":
+                    text = assist.extract_text(self.headers.get("X-Filename", ""), raw)
+                    rows = assist.add_entry(self.headers.get("X-Filename", "File"), text)
+                    return self._json(200, {"entries": rows, "chars": len(text)})
+                body = json.loads(raw or b"{}")
+                if self.path == "/api/about/add":
+                    return self._json(200, {"entries": assist.add_entry(body.get("title", ""), body.get("text", ""))})
+                if self.path == "/api/about/update":
+                    return self._json(200, {"entries": assist.update_entry(body["id"], body.get("title"), body.get("text"))})
+                if self.path == "/api/about/delete":
+                    return self._json(200, {"entries": assist.delete_entry(body["id"])})
+                if self.path == "/api/settings":
+                    return self._json(200, {"settings": assist.save_settings(body)})
+                if self.path == "/api/generate":
+                    job = job_row(body["key"])
+                    if not job:
+                        return self._json(404, {"error": "job not found"})
+                    if not body.get("force"):
+                        hit = assist.cached(job["key"]).get(body["kind"])
+                        if hit:
+                            return self._json(200, hit)
+                    return self._json(200, {"text": assist.generate(body["kind"], job), "at": "just now"})
             except Exception as e:
                 return self._json(400, {"error": str(e)})
         if self.path != "/api/status":
@@ -225,6 +266,20 @@ a.t{color:var(--acc);text-decoration:none;font-weight:600}a.t:hover{text-decorat
 .sw i:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px #0003}
 .sw input:checked+i{background:var(--ok)}.sw.inel input:checked+i{background:var(--no)}.sw.ref input:checked+i{background:var(--acc)}.sw input:checked+i:after{left:16px}
 .sw input:checked~span{color:var(--fg);font-weight:600}
+.gen{display:flex;gap:6px;margin-top:8px}
+.gbtn{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:4px 8px;cursor:pointer;white-space:nowrap}
+.gbtn:hover{border-color:var(--acc);color:var(--acc)}.gbtn[disabled]{opacity:.5;cursor:wait}
+.out{margin-top:8px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:10px 12px}
+.out textarea{width:100%;min-height:260px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);background:transparent;border:0;resize:vertical;outline:none}
+.out .bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12px;color:var(--mut)}
+.kb{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.kb .h{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px;font-weight:600}
+.kb .h button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--mut);cursor:pointer}
+.kb .h button:hover{color:#dc2626}.kb pre{margin:4px 0 0;white-space:pre-wrap;font:12px/1.45 inherit;color:var(--mut);max-height:70px;overflow:hidden}
+dialog.wide{width:min(720px,94vw);max-height:88vh;overflow:auto}
+dialog label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}
+dialog input[type=text],dialog input[type=password],dialog textarea,dialog select{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+dialog textarea{min-height:110px;resize:vertical}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .empty{padding:40px;text-align:center;color:var(--mut)}
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);width:min(520px,92vw);padding:20px}
 dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog ol{padding-left:18px;color:var(--mut);font-size:13px}
@@ -234,6 +289,7 @@ dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog
 </style></head><body>
 <header>
  <div class="top"><h1>Job Radar <small id="count"></small></h1>
+  <button class="btn" id="about">About me<small id="ameta"></small></button>
   <button class="btn" id="imp">Import LinkedIn connections<small id="cmeta"></small></button></div>
  <div class="filters">
   <div class="seg" id="status">
@@ -251,6 +307,30 @@ dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog
  </div>
 </header>
 <main id="list"></main>
+<dialog id="adlg" class="wide"><h2>About me</h2>
+ <div style="color:var(--mut);font-size:13px">Everything here stays on this Mac. It's used as context when writing referral emails and tailoring your resume for a role.</div>
+ <div class="grid2">
+  <div><label>OpenAI API key</label><input type="password" id="skey" placeholder="sk-..."></div>
+  <div><label>Model</label><input type="text" id="smodel" placeholder="gpt-5-mini"></div>
+  <div><label>Short note written in</label><select id="svoice"><option value="third">Third person (Connor has...)</option><option value="first">First person (I have...)</option></select></div>
+  <div><label>Email address</label><input type="text" id="semail"></div>
+  <div><label>Phone</label><input type="text" id="sphone"></div>
+  <div><label>LinkedIn</label><input type="text" id="slinkedin"></div>
+  <div><label>GitHub</label><input type="text" id="sgithub"></div>
+ </div>
+ <div style="text-align:right;margin-top:8px"><button class="btn" id="ssave">Save settings</button></div>
+ <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+ <label>Add a note (an answer you reuse, a story, anything about you)</label>
+ <input type="text" id="ktitle" placeholder="Title, e.g. Why I want to work in AI infra">
+ <textarea id="ktext" placeholder="Paste the answer or text here"></textarea>
+ <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn" id="kadd">Save note</button>
+  <span style="color:var(--mut);font-size:12px">or</span>
+  <button class="btn" id="kfilebtn">Upload a file (.pdf, .docx, .txt, .md)</button><input type="file" id="kfile" accept=".pdf,.docx,.txt,.md,.csv" hidden></div>
+ <div class="msg" id="amsg"></div>
+ <h2 style="font-size:15px;margin:16px 0 8px">Saved context <small id="kcount" style="color:var(--mut);font-weight:400"></small></h2>
+ <div id="klist"></div>
+ <div style="text-align:right;margin-top:10px"><button class="btn" onclick="adlg.close()">Close</button></div>
+</dialog>
 <dialog id="dlg"><h2>Import LinkedIn connections</h2>
  <ol><li>LinkedIn → Settings → Data privacy → <b>Get a copy of your data</b></li>
   <li>Pick <b>Connections</b> (or the full archive) and request it</li>
@@ -262,7 +342,7 @@ dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog
 <script>
 const ER={quick:0,medium:1,long:2};const EF={quick:"⚡ ~2 min",medium:"~5 min",long:"🕐 ~15 min · account"};
 const R={gta_kw:"Toronto/Waterloo",dc_nova:"DC/NoVA",remote_ca:"Remote Canada",canada_other:"Canada",us_other:"US",us_remote:"Remote US",unknown:"?"};
-let JOBS=[],CMETA={},st="todo";const open=new Set();
+let JOBS=[],CMETA={},AMETA={},st="todo";const open=new Set(),OUT={};
 const $=s=>document.querySelector(s),dlg=$("#dlg"),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function daysAgo(d){return d?Math.floor((Date.now()-new Date(d+"T12:00:00"))/864e5):999}
 function person(p,sub){return `<div class="person"><div>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name)}</div><span>${esc(sub)}</span></div>`}
@@ -281,12 +361,15 @@ function row(j){
    <div class="sub">${esc(j.company)} · ${esc(j.location)}${(j.flags||"").split(",").filter(Boolean).map(f=>`<span class="flag">${esc(f)}</span>`).join("")}</div>
    <div class="why">${esc(j.why_fit)}${j.concerns?" · ⚠ "+esc(j.concerns):""}</div>
    <div class="links">${j.apply_url?`<a href="${esc(j.apply_url)}" target="_blank" rel="noopener"><b>Apply form ↗</b></a>`:""}<a href="${esc(L.first)}" target="_blank" rel="noopener">1st-degree ↗</a><a href="${esc(L.second)}" target="_blank" rel="noopener">2nd-degree ↗</a><a href="${esc(L.alumni)}" target="_blank" rel="noopener">Guelph alumni ↗</a><a href="${esc(L.recruiters)}" target="_blank" rel="noopener">Recruiters ↗</a></div>
-   ${panel}</div>
+   ${panel}${OUT[j.key]?`<div class="out"><div class="bar"><span>${OUT[j.key].kind==="email"?"Referral email":"Resume tailoring"} · ${esc(OUT[j.key].at||"")}</span>
+    <span><button class="gbtn" data-copy="${j.key}">Copy</button> <button class="gbtn" data-regen="${j.key}" data-kind="${OUT[j.key].kind}">Regenerate</button> <button class="gbtn" data-close="${j.key}">Hide</button></span></div>
+    <textarea spellcheck="false" data-ta="${j.key}">${esc(OUT[j.key].text)}</textarea></div>`:""}</div>
   <div class="meta">${esc(R[j.region]||j.region)}<br>${esc(j.source)}<br>found ${esc(j.first_seen)}</div>
   <div class="tg">
    <label class="sw"><input type="checkbox" data-k="${j.key}" data-f="applied"${j.applied?" checked":""}><i></i><span>Applied</span></label>
    <label class="sw inel"><input type="checkbox" data-k="${j.key}" data-f="ineligible"${j.ineligible?" checked":""}><i></i><span>Ineligible</span></label>
    <label class="sw ref"><input type="checkbox" data-k="${j.key}" data-f="referral"${j.referral?" checked":""}><i></i><span>Get referral</span></label>
+   ${j.referral?`<div class="gen"><button class="gbtn" data-gen="email" data-k="${j.key}">✉️ Email${j.gen.includes("email")?" ✓":""}</button><button class="gbtn" data-gen="resume" data-k="${j.key}">📄 Resume${j.gen.includes("resume")?" ✓":""}</button></div>`:""}
   </div></div>`}
 function view(){
  const p=$("#prio").value,rg=$("#region").value,age=$("#age").value,q=$("#q").value.toLowerCase().trim(),so=$("#sort").value;
@@ -323,6 +406,17 @@ $("#list").addEventListener("change",async e=>{
  try{const r=await fetch("/api/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:j.key,field:t.dataset.f,value:t.checked})});if(!r.ok)throw 0}
  catch{j[t.dataset.f]=!t.checked;alert("Couldn't save. Is the app still running in Terminal?")}
  setTimeout(view,250)});
+$("#list").addEventListener("click",async e=>{
+ const g=e.target.closest("[data-gen]"),rg=e.target.closest("[data-regen]"),cp=e.target.closest("[data-copy]"),cl=e.target.closest("[data-close]");
+ if(cl){delete OUT[cl.dataset.close];return view()}
+ if(cp){const ta=document.querySelector(`[data-ta="${cp.dataset.copy}"]`);ta.select();document.execCommand("copy");cp.textContent="Copied";setTimeout(()=>cp.textContent="Copy",1200);return}
+ const btn=g||rg;if(!btn)return;
+ const key=g?g.dataset.k:rg.dataset.regen,kind=g?g.dataset.gen:rg.dataset.kind;
+ btn.disabled=true;const old=btn.textContent;btn.textContent="Writing...";
+ try{const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,kind,force:!!rg})});
+  const d=await r.json();if(!r.ok)throw new Error(d.error||"Failed");
+  OUT[key]={kind,text:d.text,at:d.at||""};const j=JOBS.find(x=>x.key===key);if(j&&!j.gen.includes(kind))j.gen.push(kind);view()}
+ catch(err){alert(err.message)}finally{btn.disabled=false;btn.textContent=old}});
 $("#status").addEventListener("click",e=>{if(!e.target.dataset.v)return;st=e.target.dataset.v;
  if(st==="referral")$("#sort").value="conns";                      // most connections first
  document.querySelectorAll("#status button").forEach(b=>b.classList.toggle("on",b===e.target));view()});
@@ -340,5 +434,26 @@ async function upload(f){msg.className="msg";msg.textContent=`Reading ${f.name}.
   await load();const hits=JOBS.filter(j=>(j.conns||[]).length).length;
   msg.className="msg ok";msg.textContent=`Imported ${d.count} connections. You know someone at ${hits} of these jobs.`}
  catch(e){msg.className="msg err";msg.textContent=e.message}}
-load();
+// ---- About me portal ----
+const adlg=$("#adlg");
+function kbView(rows){$("#klist").innerHTML=rows.length?rows.map(e=>`<div class="kb"><div class="h"><span>${esc(e.title)} <small style="color:var(--mut);font-weight:400">${esc(e.added)} · ${e.text.length} chars</small></span><button data-del="${e.id}">Delete</button></div><pre>${esc(e.text.slice(0,400))}</pre></div>`).join(""):`<div style="color:var(--mut);font-size:13px">Nothing saved yet.</div>`;
+ $("#kcount").textContent=rows.length?`(${rows.length})`:"";$("#ameta").textContent=rows.length?`${rows.length} notes`:"empty";}
+function setS(s){AMETA=s;$("#skey").placeholder=s.has_key?"saved (type to replace)":"sk-...";$("#smodel").value=s.model||"";$("#svoice").value=s.voice||"third";
+ $("#semail").value=s.email||"";$("#sphone").value=s.phone||"";$("#slinkedin").value=s.linkedin||"";$("#sgithub").value=s.github||"";}
+async function aload(){const d=await (await fetch("/api/about")).json();kbView(d.entries);setS(d.settings)}
+$("#about").onclick=()=>{$("#amsg").textContent="";adlg.showModal()};
+$("#ssave").onclick=async()=>{const b={model:$("#smodel").value,voice:$("#svoice").value,email:$("#semail").value,phone:$("#sphone").value,linkedin:$("#slinkedin").value,github:$("#sgithub").value};
+ if($("#skey").value.trim())b.api_key=$("#skey").value.trim();
+ const d=await (await fetch("/api/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)})).json();
+ setS(d.settings);$("#skey").value="";$("#amsg").className="msg ok";$("#amsg").textContent="Saved."};
+$("#kadd").onclick=async()=>{const r=await fetch("/api/about/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:$("#ktitle").value,text:$("#ktext").value})});
+ const d=await r.json();$("#amsg").className="msg "+(r.ok?"ok":"err");$("#amsg").textContent=r.ok?"Note saved.":d.error;
+ if(r.ok){kbView(d.entries);$("#ktitle").value="";$("#ktext").value=""}};
+$("#kfilebtn").onclick=()=>$("#kfile").click();
+$("#kfile").onchange=async()=>{const f=$("#kfile").files[0];if(!f)return;$("#amsg").className="msg";$("#amsg").textContent=`Reading ${f.name}...`;
+ const r=await fetch("/api/about/file",{method:"POST",headers:{"X-Filename":f.name},body:f});const d=await r.json();
+ $("#amsg").className="msg "+(r.ok?"ok":"err");$("#amsg").textContent=r.ok?`Imported ${f.name} (${d.chars} characters).`:d.error;if(r.ok)kbView(d.entries);$("#kfile").value=""};
+$("#klist").addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
+ const d=await (await fetch("/api/about/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:b.dataset.del})})).json();kbView(d.entries)});
+load();aload();
 </script></body></html>"""

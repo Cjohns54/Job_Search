@@ -26,6 +26,17 @@ cd ~/Desktop/Job_Search/job-radar && python3 -m jobradar app
 
 Pulls the latest jobs, opens a tracker in your browser. Every job has **Applied** and **Ineligible** toggles; filter by To do / Applied / Not applied / Ineligible, priority, region, date found, or search. Toggles save instantly to `data/status.json`. Press Ctrl+C in Terminal when done and your statuses get committed and pushed as a backup.
 
+### About me (referral emails and resume tailoring)
+
+Click **About me** in the tracker to add your OpenAI key, contact lines, and reusable notes (paste text or upload .pdf, .docx, .txt). Everything is stored in `data/` and gitignored.
+
+Flip **Get referral** on a job, open the **Referral list** tab, and each job gets two buttons:
+
+- **✉️ Email**: a referral email for that exact role. Intro, a line showing you know who they are, the job link, then a 100-200 word note on why you fit, built from your resume plus your notes. Never a generic "any opportunities" ask.
+- **📄 Resume**: match summary, keywords to mirror, 5-7 rewritten bullets tied to your real roles, and a summary line for that job.
+
+Results are cached per job, so reopening costs nothing. Regenerate writes a fresh one. PDF import needs `pip3 install --user pypdf`; other formats work out of the box.
+
 ## Outputs
 
 - `output/latest.html`: the morning page (new today, grouped by priority, with apply links)

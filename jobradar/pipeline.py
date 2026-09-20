@@ -124,6 +124,11 @@ def run(only: set[str] | None = None, use_llm: bool = True, db_path: Path | None
     if cfg.get("contacts", {}).get("enabled", True):
         find_contacts(store, cfg)
 
+    dropped = store.prune_descriptions()
+    store.commit()
+    if dropped:
+        log.info("Cleared %d old job descriptions to keep jobs.db small", dropped)
+
     new = write_all(store, out_dir or ROOT / "output")
     log.info("Funnel: %s", dict(funnel))
     log.info("New today (P1-P4): %d  |  LLM calls: %d  |  tokens in/out: %d/%d", len(new), scorer.used, scorer.tokens_in, scorer.tokens_out)
