@@ -89,6 +89,7 @@ def jobs() -> list[dict]:
         s = st.get(r["key"], {})
         r["applied"] = bool(s.get("applied"))
         r["ineligible"] = bool(s.get("ineligible"))
+        r["referral"] = bool(s.get("referral"))
         try:
             r["people"] = json.loads(r.get("contacts_json") or "[]")
         except json.JSONDecodeError:
@@ -140,7 +141,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = json.loads(self.rfile.read(n))
             key, field, value = body["key"], body["field"], bool(body["value"])
-            assert field in ("applied", "ineligible")
+            assert field in ("applied", "ineligible", "referral")
         except Exception:
             return self._send(400, b"bad request", "text/plain")
         with _lock:
@@ -148,7 +149,7 @@ class Handler(BaseHTTPRequestHandler):
             entry = st.setdefault(key, {})
             entry[field] = value
             entry["updated"] = dt.date.today().isoformat()
-            if not entry.get("applied") and not entry.get("ineligible"):
+            if not any(entry.get(f) for f in ("applied", "ineligible", "referral")):
                 st.pop(key)
             save_status(st)
         self._json(200, {"ok": True})
@@ -202,8 +203,8 @@ input[type=search]{min-width:220px;flex:1;max-width:340px}
 .seg button{font:inherit;border:0;background:var(--card);color:var(--fg);padding:6px 11px;cursor:pointer;border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}.seg button.on{background:var(--acc);color:#fff}
 main{padding:8px 20px 60px;max-width:1240px}
-.row{display:grid;grid-template-columns:40px 1fr 140px 120px;gap:14px;align-items:start;padding:12px 4px;border-bottom:1px solid var(--line)}
-.row.done{opacity:.55}.fit{font-weight:700;font-variant-numeric:tabular-nums;font-size:15px;padding-top:1px}
+.row{display:grid;grid-template-columns:40px 1fr 140px 142px;gap:14px;align-items:start;padding:12px 4px;border-bottom:1px solid var(--line)}
+.row.done{opacity:.55}.row.ref{border-left:3px solid var(--acc);padding-left:8px;margin-left:-11px}.fit{font-weight:700;font-variant-numeric:tabular-nums;font-size:15px;padding-top:1px}
 .p{display:inline-block;font-size:11px;border-radius:4px;padding:0 5px;background:var(--chip);color:var(--mut);margin-right:6px;vertical-align:1px}
 .tl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
 a.t{color:var(--acc);text-decoration:none;font-weight:600}a.t:hover{text-decoration:underline}
@@ -222,7 +223,7 @@ a.t{color:var(--acc);text-decoration:none;font-weight:600}a.t:hover{text-decorat
 .sw{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;color:var(--mut)}
 .sw input{display:none}.sw i{width:34px;height:20px;border-radius:10px;background:var(--line);position:relative;transition:.15s;flex:none}
 .sw i:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px #0003}
-.sw input:checked+i{background:var(--ok)}.sw.inel input:checked+i{background:var(--no)}.sw input:checked+i:after{left:16px}
+.sw input:checked+i{background:var(--ok)}.sw.inel input:checked+i{background:var(--no)}.sw.ref input:checked+i{background:var(--acc)}.sw input:checked+i:after{left:16px}
 .sw input:checked~span{color:var(--fg);font-weight:600}
 .empty{padding:40px;text-align:center;color:var(--mut)}
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);width:min(520px,92vw);padding:20px}
@@ -237,7 +238,7 @@ dialog::backdrop{background:#0006}dialog h2{margin:0 0 6px;font-size:17px}dialog
  <div class="filters">
   <div class="seg" id="status">
    <button data-v="todo" class="on">To do</button><button data-v="applied">Applied</button>
-   <button data-v="notapplied">Not applied</button><button data-v="ineligible">Ineligible</button><button data-v="all">All</button>
+   <button data-v="notapplied">Not applied</button><button data-v="ineligible">Ineligible</button><button data-v="referral">Referral list</button><button data-v="all">All</button>
   </div>
   <select id="prio"><option value="">All priorities</option><option value="1">P1 near you, strong</option><option value="2">P2 top co, strong</option><option value="3">P3 near you, partial</option><option value="4">P4 other</option></select>
   <select id="region"><option value="">All regions</option><option value="gta_kw">Toronto/Waterloo</option><option value="dc_nova">DC/NoVA</option><option value="remote_ca">Remote Canada</option><option value="canada_other">Other Canada</option><option value="us">US (other/remote)</option></select>
@@ -274,7 +275,7 @@ function row(j){
    <div class="note">LinkedIn's export doesn't include schools. Click a name to see theirs, or check <a href="${esc(L.alumni)}" target="_blank" rel="noopener">Guelph alumni at ${esc(j.company)}</a>.</div>`:""}
    ${(j.people||[]).length?`<h4 style="margin-top:10px">Hiring team</h4>${j.people.map(p=>person(p,p.title)).join("")}`:""}
   </div>`:"";
- return `<div class="row${j.applied||j.ineligible?" done":""}">
+ return `<div class="row${j.applied||j.ineligible?" done":""}${j.referral&&!j.applied?" ref":""}">
   <div class="fit">${j.fit_score??""}</div>
   <div><div class="tl"><span><span class="p">P${j.priority}</span><a class="t" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a></span><span class="chip e ${j.effort}" title="${esc(j.effort_why)}">${EF[j.effort]}</span>${cchip}${rchip}</div>
    <div class="sub">${esc(j.company)} · ${esc(j.location)}${(j.flags||"").split(",").filter(Boolean).map(f=>`<span class="flag">${esc(f)}</span>`).join("")}</div>
@@ -285,6 +286,7 @@ function row(j){
   <div class="tg">
    <label class="sw"><input type="checkbox" data-k="${j.key}" data-f="applied"${j.applied?" checked":""}><i></i><span>Applied</span></label>
    <label class="sw inel"><input type="checkbox" data-k="${j.key}" data-f="ineligible"${j.ineligible?" checked":""}><i></i><span>Ineligible</span></label>
+   <label class="sw ref"><input type="checkbox" data-k="${j.key}" data-f="referral"${j.referral?" checked":""}><i></i><span>Get referral</span></label>
   </div></div>`}
 function view(){
  const p=$("#prio").value,rg=$("#region").value,age=$("#age").value,q=$("#q").value.toLowerCase().trim(),so=$("#sort").value;
@@ -293,6 +295,7 @@ function view(){
   if(st==="applied"&&!j.applied)return false;
   if(st==="notapplied"&&j.applied)return false;
   if(st==="ineligible"&&!j.ineligible)return false;
+  if(st==="referral"&&!j.referral)return false;
   if(p&&String(j.priority)!==p)return false;
   if(rg&&(rg==="us"?!(j.region==="us_other"||j.region==="us_remote"):j.region!==rg))return false;
   if(age!==""&&daysAgo(j.first_seen)>+age)return false;
@@ -306,8 +309,8 @@ function view(){
   fit:(a,b)=>f(a,b)||a.priority-b.priority,prio:(a,b)=>a.priority-b.priority||f(a,b),
   conns:(a,b)=>(b.conns||[]).length-(a.conns||[]).length||a.priority-b.priority,
   effort:(a,b)=>ER[a.effort]-ER[b.effort]||a.priority-b.priority||f(a,b)}[so]);
- const ap=JOBS.filter(j=>j.applied).length,ie=JOBS.filter(j=>j.ineligible).length;
- $("#count").textContent=`${v.length} shown · ${JOBS.length} total · ${ap} applied · ${ie} ineligible`;
+ const ap=JOBS.filter(j=>j.applied).length,ie=JOBS.filter(j=>j.ineligible).length,rf=JOBS.filter(j=>j.referral&&!j.applied).length;
+ $("#count").textContent=`${v.length} shown · ${JOBS.length} total · ${ap} applied · ${rf} chasing a referral · ${ie} ineligible`;
  $("#cmeta").textContent=CMETA.count?`${CMETA.count} imported ${CMETA.imported}`:"not imported yet";
  $("#list").innerHTML=v.length?v.map(row).join(""):`<div class="empty">Nothing matches these filters.</div>`;
 }
@@ -321,6 +324,7 @@ $("#list").addEventListener("change",async e=>{
  catch{j[t.dataset.f]=!t.checked;alert("Couldn't save. Is the app still running in Terminal?")}
  setTimeout(view,250)});
 $("#status").addEventListener("click",e=>{if(!e.target.dataset.v)return;st=e.target.dataset.v;
+ if(st==="referral")$("#sort").value="conns";                      // most connections first
  document.querySelectorAll("#status button").forEach(b=>b.classList.toggle("on",b===e.target));view()});
 ["#prio","#region","#age","#eff","#sort","#hasc","#hasp"].forEach(s=>$(s).addEventListener("change",view));$("#q").addEventListener("input",view);
 // import dialog
